@@ -7,7 +7,10 @@ import java.util.HashMap;
 
 public interface Symbol {
 	public String getSymbol();
+	public int getPrecedence();
 	public int compareTo(String s);
+	public int compareTo(Symbol s);
+	
 	
 	final int LEFT = 0;
 	final int RIGHT = 1;
@@ -62,58 +65,76 @@ public interface Symbol {
 		public String getSymbol() {
 			return symbol;
 		}
-
+		public int getPrecedence() {
+			return 0;
+		}
+		
+		public int compareTo(Symbol s) {
+			return symbol.compareTo(s.getSymbol());
+		}
 		public int compareTo(String s) {
 			return symbol.compareTo(s);
 		}
-		
 	}
 	
 	public enum Operator implements Symbol {
-		NOT("~", 5) {
+		NOT("~", 5, true) {
 			public Logic.Operator operator() {
 				return new Symbol.Logic.MonadicOperator(symbol,
-						EnumSet.of(TruthEnum.Monadic.F));
+						EnumSet.of(TruthEnum.Monadic.F), 
+						precedence);
 			}
-		}, AND("&", 4) {
+		}, AND("&", 4, false) {
 			public Logic.Operator operator() {
 				return new Symbol.Logic.BinaryOperator(symbol, 
-						EnumSet.of(TruthEnum.Binary.FF, TruthEnum.Binary.FT, TruthEnum.Binary.TF));
+						EnumSet.of(TruthEnum.Binary.FF, 
+								TruthEnum.Binary.FT, 
+								TruthEnum.Binary.TF), 
+								precedence);
 			}
-		}, OR("|", 3) {
+		}, OR("|", 3, false) {
 			public Logic.Operator operator() {
 				return new Symbol.Logic.BinaryOperator(symbol, 
-						EnumSet.of(TruthEnum.Binary.FF));
+						EnumSet.of(TruthEnum.Binary.FF), 
+						precedence);
 			}
-		}, IF(">", 2) {
+		}, IF(">", 2, false) {
 			public Logic.Operator operator() {
 				return new Symbol.Logic.BinaryOperator(symbol, 
-						EnumSet.of(TruthEnum.Binary.TF));
+						EnumSet.of(TruthEnum.Binary.TF), 
+						precedence);
 			}
-		}, IFF("<>", 1) {
+		}, IFF("<>", 1, false) {
 			public Logic.Operator operator() {
 				return new Symbol.Logic.BinaryOperator(symbol, 
-						EnumSet.of(TruthEnum.Binary.FT, TruthEnum.Binary.TF));
+						EnumSet.of(TruthEnum.Binary.FT, 
+								TruthEnum.Binary.TF), 
+						precedence);
 			}
-		}, DEFAULT("", 0) {
+		}, DEFAULT("", 0, false) {
 			public Logic.Operator operator() {
 				return new Symbol.Logic.BinaryOperator(symbol, 
-						EnumSet.noneOf(TruthEnum.Binary.class));
+						EnumSet.noneOf(TruthEnum.Binary.class),
+						precedence);
 			}
 		};
 		
 		public abstract Logic.Operator operator();
 		
-		Operator(String symbol, int precedence) {
+		Operator(String symbol, int precedence, boolean monadic) {
 			this.symbol = symbol;
 			this.precedence = precedence;
+			this.monadic = monadic;
 		}
 		
 		String symbol;
 		public String getSymbol() {
 			return symbol;
 		}
-
+		public int compareTo(Symbol s) {
+			return compareTo(s.getSymbol());
+		}
+		
 		public int compareTo(String s) {
 			if(symbol.equals(s)) {
 				return 0;
@@ -132,6 +153,34 @@ public interface Symbol {
 			return precedence;
 		}
 		
+		boolean monadic;
+		public boolean isMonadic() {
+			return monadic;
+		}
+		
+	}
+	
+	public class Variable implements Symbol {
+		
+		public Variable(String symbol) {
+			this.symbol = symbol;
+		}
+		
+		String symbol;
+		public String getSymbol() {
+			return symbol;
+		}
+
+		public int getPrecedence() {
+			return 0;
+		}
+
+		public int compareTo(Symbol s) {
+			return compareTo(s.getSymbol());
+		}
+		public int compareTo(String s) {
+			return symbol.compareTo(s);
+		}
 	}
 	
 	public abstract class Logic implements Symbol {
@@ -140,12 +189,19 @@ public interface Symbol {
 			return symbol;
 		}
 		
+		public int compareTo(Symbol s) {
+			return compareTo(s.getSymbol());
+		}
 		public abstract int compareTo(String s);
 		ArrayList<Boolean> truthValues;
 		public abstract ArrayList<Boolean> eval(ArrayList<Boolean>[] operands);
 		
 		
 		public static abstract class Operator extends Logic {
+			int precedence;
+			public int getPrecedence() {
+				return precedence;
+			}
 			public int compareTo(String s) {
 				if(symbol.equals(s)) {
 					return 0;
@@ -179,9 +235,10 @@ public interface Symbol {
 		
 		public static class BinaryOperator extends Operator {
 			EnumSet<TruthEnum.Binary> invalidCases;
-			public BinaryOperator(String symbol, EnumSet<TruthEnum.Binary> invalidCases) {
+			public BinaryOperator(String symbol, EnumSet<TruthEnum.Binary> invalidCases, int precedence) {
 				this.symbol = symbol;
 				this.invalidCases = invalidCases;
+				this.precedence = precedence;
 			}
 			
 			public boolean invalid(ArrayList<Boolean>[] operands, int index) {
@@ -197,9 +254,10 @@ public interface Symbol {
 		
 		public static class MonadicOperator extends Operator {
 			EnumSet<TruthEnum.Monadic> invalidCases;
-			public MonadicOperator(String symbol, EnumSet<TruthEnum.Monadic> invalidCases) {
+			public MonadicOperator(String symbol, EnumSet<TruthEnum.Monadic> invalidCases, int precedence) {
 				this.symbol = symbol;
 				this.invalidCases = invalidCases;
+				this.precedence = precedence;
 			}
 			
 			public boolean invalid(ArrayList<Boolean>[] operands, int index) {
@@ -214,11 +272,16 @@ public interface Symbol {
 		}
 		
 		public static class Variable extends Logic {
-			static HashMap<String, ArrayList<Boolean>> varMap;
-			
-			public Variable(String symbol, HashMap<String, ArrayList<Boolean>> varMap) {
+			public int getPrecedence() {
+				return 0;
+			}
+			static HashMap<String, ArrayList<Boolean>> varMap = null;
+			public Variable(String symbol) {
 				this.symbol = symbol;
-				Variable.varMap = varMap;
+				if(varMap == null) {
+					varMap = new HashMap<String, ArrayList<Boolean>>();
+				}
+				varMap.put(symbol, null);
 			}
 			
 			public int compareTo(String s) {

@@ -1,8 +1,10 @@
 package SymboLo;
 
+import java.util.LinkedList;
+import java.util.Queue;
+import java.util.Stack;
 
 public class BooleanTree extends BinaryTree<Symbol.Logic>{
-	
 	
 	public BooleanTree() {
         root = null;
@@ -19,4 +21,65 @@ public class BooleanTree extends BinaryTree<Symbol.Logic>{
     public static BooleanTree booltree(Symbol.Logic theItem) {
         return new BooleanTree(new BinaryNode<Symbol.Logic>(theItem, null, null));
     }
+    
+    public static BooleanTree makeBooleanTree(Queue<Symbol> exp) { //postfix stack to tree
+        Stack<BooleanTree> ops = new Stack<BooleanTree>();
+        while(!exp.isEmpty()) {
+        	boolean isOp = false;
+            for(Symbol.Operator o : Symbol.Operator.values()) {
+                if(o.compareTo(exp.peek()) == 0) {
+                    if(o.isMonadic()) {
+                    	ops.push(BooleanTree.booltree(o.operator(), ops.pop(), null));
+                    } else {
+                    	ops.push(BooleanTree.booltree(o.operator(), ops.pop(), ops.pop()));
+                    }
+                    
+                    isOp = true;
+                    break;
+                }
+            }
+            if(!isOp) {
+            	ops.push(BooleanTree.booltree(new Symbol.Logic.Variable(exp.peek().getSymbol())));
+            }
+            exp.remove();
+        }
+        return ops.pop();
+    }
+    
+    public static Queue<Symbol> inToPost(String input) {
+        Stack<Symbol> s = new Stack<Symbol>();
+        //String w = input.replaceAll(" ", "");
+        String[] x = input.split(" "); //assume every symbol is separated by " "
+        Queue<Symbol> q = new LinkedList<Symbol>();
+        
+        for(int i = 0; i < x.length; i++) {
+            if(Symbol.Parentheses.OPEN.compareTo(x[i]) == 0) {
+            	s.push(Symbol.Parentheses.OPEN);
+            } else if (Symbol.Parentheses.CLOSE.compareTo(x[i]) == 0) {
+            	while(s.peek().compareTo(Symbol.Parentheses.OPEN) != 0) {
+            		q.add(s.pop());
+            	}
+            } else {
+            	boolean isOp = false;
+            	for(Symbol.Operator o : Symbol.Operator.values()) {
+            		if(o.compareTo(x[i]) == 0) {
+            			while(!s.empty() && (o.getPrecedence() < s.peek().getPrecedence())) {
+            				q.add(s.pop());
+            			}
+            			s.push(o);
+            			isOp = true;
+            			break;
+            		}
+            	}
+            	if(!isOp) {
+            		q.add(new Symbol.Variable(x[i]));
+            	}
+            } 
+        }
+        while(!s.empty()) {
+            q.add(s.pop());
+        }
+        return q;
+    }
+    
 }
