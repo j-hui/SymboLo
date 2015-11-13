@@ -11,7 +11,6 @@ public interface Symbol {
 	public int compareTo(String s);
 	public int compareTo(Symbol s);
 	
-	
 	final int LEFT = 0;
 	final int RIGHT = 1;
 	
@@ -51,8 +50,6 @@ public interface Symbol {
 		}
 	}
 	
-	
-	
 	public enum Parentheses implements Symbol {
 		OPEN("("), CLOSE(")");
 
@@ -81,7 +78,7 @@ public interface Symbol {
 		NOT("~", 5, true) {
 			public Logic.Operator operator() {
 				return new Symbol.Logic.MonadicOperator(symbol,
-						EnumSet.of(TruthEnum.Monadic.F), 
+						EnumSet.of(TruthEnum.Monadic.T), 
 						precedence);
 			}
 		}, AND("&", 4, false) {
@@ -104,17 +101,11 @@ public interface Symbol {
 						EnumSet.of(TruthEnum.Binary.TF), 
 						precedence);
 			}
-		}, IFF("<>", 1, false) {
+		}, IFF("=", 1, false) {
 			public Logic.Operator operator() {
 				return new Symbol.Logic.BinaryOperator(symbol, 
 						EnumSet.of(TruthEnum.Binary.FT, 
 								TruthEnum.Binary.TF), 
-						precedence);
-			}
-		}, DEFAULT("", 0, false) {
-			public Logic.Operator operator() {
-				return new Symbol.Logic.BinaryOperator(symbol, 
-						EnumSet.noneOf(TruthEnum.Binary.class),
 						precedence);
 			}
 		};
@@ -136,16 +127,7 @@ public interface Symbol {
 		}
 		
 		public int compareTo(String s) {
-			if(symbol.equals(s)) {
-				return 0;
-			} else {
-				for(Operator o : Operator.values()) {
-					if(o.compareTo(s) == 0) {
-						return precedence - o.getPrecedence();
-					}
-				}
-			}
-			return 0; // Should throw error
+			return symbol.compareTo(s);
 		}
 		
 		int precedence;
@@ -157,7 +139,6 @@ public interface Symbol {
 		public boolean isMonadic() {
 			return monadic;
 		}
-		
 	}
 	
 	public class Variable implements Symbol {
@@ -165,16 +146,13 @@ public interface Symbol {
 		public Variable(String symbol) {
 			this.symbol = symbol;
 		}
-		
 		String symbol;
 		public String getSymbol() {
 			return symbol;
 		}
-
 		public int getPrecedence() {
 			return 0;
 		}
-
 		public int compareTo(Symbol s) {
 			return compareTo(s.getSymbol());
 		}
@@ -192,31 +170,21 @@ public interface Symbol {
 		public int compareTo(Symbol s) {
 			return compareTo(s.getSymbol());
 		}
-		public abstract int compareTo(String s);
+		public int compareTo(String s) {
+			return symbol.compareTo(s);
+		}
 		ArrayList<Boolean> truthValues;
 		public abstract ArrayList<Boolean> eval(ArrayList<Boolean>[] operands);
+		public ArrayList<Boolean> getTruthValues() {
+			return truthValues;
+		}
 		
 		public static abstract class Operator extends Logic {
 			int precedence;
 			public int getPrecedence() {
 				return precedence;
 			}
-			public int compareTo(String s) {
-				if(symbol.equals(s)) {
-					return 0;
-				} else {
-					Symbol.Operator thisOperator = Symbol.Operator.DEFAULT;
-					Symbol.Operator argOperator = Symbol.Operator.DEFAULT;
-					for(Symbol.Operator o : Symbol.Operator.values()) {
-						if(o.compareTo(symbol) == 0) {
-							thisOperator = o;
-						} else if(o.compareTo(s) == 0) {
-							argOperator = o;
-						}
-					}
-					return thisOperator.getPrecedence() - argOperator.getPrecedence();
-				}
-			}
+			
 			public abstract boolean invalid(ArrayList<Boolean>[] operands, int index);
 			public ArrayList<Boolean> eval(ArrayList<Boolean>[] operands) {
 				truthValues = new ArrayList<Boolean>();
@@ -239,15 +207,14 @@ public interface Symbol {
 				this.invalidCases = invalidCases;
 				this.precedence = precedence;
 			}
-			
 			public boolean invalid(ArrayList<Boolean>[] operands, int index) {
-				Boolean[] opArray = {operands[LEFT].get(index), operands[RIGHT].get(index)};	
+				Boolean[] opArray = {operands[RIGHT].get(index), operands[LEFT].get(index)};	
 				for(TruthEnum invalidCase : invalidCases) {
 					if(invalidCase.equivTo(opArray)) {
-						return false;
+						return true;
 					}
 				}
-				return true;
+				return false;
 			}
 		}
 		
@@ -263,16 +230,16 @@ public interface Symbol {
 				Boolean[] opArray = {operands[0].get(index)};
 				for(TruthEnum invalidCase : invalidCases) {
 					if(invalidCase.equivTo(opArray)) {
-						return false;
+						return true;
 					}
 				}
-				return true;
+				return false;
 			}
 		}
 		
 		public static class Variable extends Logic {
 			public int getPrecedence() {
-				return 0;
+				return Integer.MAX_VALUE;
 			}
 			static HashMap<String, ArrayList<Boolean>> varMap = null;
 			public Variable(String symbol) {
@@ -280,17 +247,30 @@ public interface Symbol {
 				if(varMap == null) {
 					varMap = new HashMap<String, ArrayList<Boolean>>();
 				}
-				varMap.put(symbol, null);
-			}
-			
-			public int compareTo(String s) {
-				return symbol.compareTo(s);
+				varMap.put(this.symbol, null);
 			}
 
 			public ArrayList<Boolean> eval(ArrayList<Boolean>[] operands) { // no operands
 				return truthValues = varMap.get(symbol); // lookup var truthValues
 			}
+			
+			public static int countAndEnumTVals() {
+				int permutations = 2 << (varMap.size() - 1);
+				int j = 1;
+				Boolean tVal = true;
+				for(String var : varMap.keySet()) {
+					ArrayList<Boolean> tMappings = new ArrayList<Boolean>();
+					for(int i = 0; i < permutations; i++) {
+						if(i % j == 0) {
+							tVal = !tVal;
+						}
+						tMappings.add(i, tVal);
+					}
+					varMap.put(var, tMappings);
+					j++;
+				}
+				return varMap.size();
+			}
 		}
 	}
-	
 }
