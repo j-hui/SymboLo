@@ -1,5 +1,4 @@
 package SymboLo;
-
 import java.util.LinkedList;
 import java.util.Queue;
 import java.util.Stack;
@@ -22,7 +21,7 @@ public class BooleanTree extends BinaryTree<Symbol.Logic>{
         return new BooleanTree(new BinaryNode<Symbol.Logic>(theItem, null, null));
     }
     
-    public static BooleanTree makeBooleanTree(Queue<Symbol> exp) { //postfix stack to tree
+    public static BooleanTree postToTree(Queue<Symbol> exp) { //postfix stack to tree
         Stack<BooleanTree> ops = new Stack<BooleanTree>();
         while(!exp.isEmpty()) {
         	boolean isOp = false;
@@ -82,4 +81,28 @@ public class BooleanTree extends BinaryTree<Symbol.Logic>{
         return q;
     }
     
+    public String treeToIn() {
+        return treeToIn(root);
+    }
+    private String treeToIn(BinaryNode<Symbol.Logic> n) {
+        if(n.left != null) { // is operator
+        	if(n.right != null) { //is boolean
+        		return treeToIn(n.data.getPrecedence(), n.right) + " "
+            			+ n.data.getSymbol() + " "
+            			+ treeToIn(n.data.getPrecedence(), n.left);
+        	} else { // is monadic
+        		return n.data.getSymbol() + " "
+        				+ treeToIn(n.data.getPrecedence(), n.left);
+        	}	
+        } else {
+        	return n.data.getSymbol();
+        }
+    }
+    private String treeToIn(int operatorPrecedence, BinaryNode<Symbol.Logic> operand) {
+    	if(operand.data.getPrecedence() <= operatorPrecedence) {
+    		return "( " + treeToIn(operand) + " )";
+        } else {
+            return treeToIn(operand);
+        }
+    }
 }

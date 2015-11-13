@@ -196,7 +196,6 @@ public interface Symbol {
 		ArrayList<Boolean> truthValues;
 		public abstract ArrayList<Boolean> eval(ArrayList<Boolean>[] operands);
 		
-		
 		public static abstract class Operator extends Logic {
 			int precedence;
 			public int getPrecedence() {
