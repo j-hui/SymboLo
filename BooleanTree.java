@@ -31,11 +31,11 @@ public class BooleanTree extends BinaryTree<Symbol.Logic>{
     
     public static BooleanTree postToTree(Queue<Symbol> exp) { //postfix stack to tree
     	Stack<BooleanTree> ops = new Stack<BooleanTree>();
-        System.out.print("Queue is ");
-    	for(Symbol sym : exp) { 
-    		System.out.print(sym.getSymbol() + ".");
-    	}
-    	System.out.println();
+        
+    	//System.out.print("Queue is ");
+    	//for(Symbol sym : exp) {System.out.print(sym.getSymbol() + ".");}
+    	//System.out.println();
+    	
     	while(!exp.isEmpty()) {
         	boolean isOp = false;
             for(Symbol.Operator o : Symbol.Operator.values()) {
@@ -137,27 +137,91 @@ public class BooleanTree extends BinaryTree<Symbol.Logic>{
     	}
     	return operand.data.eval(ops);
     }
+	
+	public String[] treeToTable() {
+		LinkedList<Symbol.Logic> table = treeToTable(root);
+		//String s = "";
+		StringBuilder strBuild = new StringBuilder();
+		String truthSymbol;
+		String[] tableStr = new String[root.data.getTruthValues().size() + 1];
+		int row = 0;
+		for(Symbol.Logic t : table) {
+			//s += t.getSymbol() + " ";
+			strBuild.append(t.getSymbol() + " ");
+		}
+		tableStr[row] = strBuild.toString();
+		row++;
+		for(int column = root.data.getTruthValues().size() - 1; column >= 0 ; column--) {
+			strBuild.delete(0, strBuild.length());
+			for(Symbol.Logic t : table) {
+				if(t.getTruthValues() != null) {
+					truthSymbol = t.getTruthValues().get(column) ? "T" : "F";
+				} else {
+					truthSymbol = " ";
+				}
+				strBuild.append(truthSymbol + " ");
+			}
+			tableStr[row] = strBuild.toString();
+			row++;
+		}
+		return tableStr;
+	}
+	private LinkedList<Symbol.Logic> treeToTable(BinaryNode<Symbol.Logic> n) {
+		LinkedList<Symbol.Logic> table;
+		if(n.left != null) { // is operator
+        	if(n.right != null) { //is binary
+        		table = treeToTable(n.data.getPrecedence(), n.right);
+            	table.addLast(n.data);
+            	table.addAll(treeToTable(n.data.getPrecedence(), n.left));
+            	return table;
+        	} else { // is monadic
+        		table = treeToTable(n.data.getPrecedence(), n.left);
+        		table.addFirst(n.data);
+        		return table;
+        	}	
+        }
+        table = new LinkedList<Symbol.Logic>();
+    	table.add(n.data);
+    	return table;	
+	}
+	private LinkedList<Symbol.Logic> treeToTable(int operatorPrecedence, BinaryNode<Symbol.Logic> operand) {
+    	LinkedList<Symbol.Logic> table = treeToTable(operand);
+		if(operand.data.getPrecedence() < operatorPrecedence) {
+    		table.addFirst(new Symbol.Logic.NonTruth("("));
+    		table.addLast(new Symbol.Logic.NonTruth(")"));
+        }
+    	return table;
+    }
     
     public static void main(String[] args) {
         try {
-            BooleanTree exp = BooleanTree.postToTree
+            System.out.println("Please enter your "
+                    + "boolean expression and press enter: ");
+        	BooleanTree exp = BooleanTree.postToTree
                     (BooleanTree.inToPost(BooleanTree.prompt()));
-            //System.out.println("Prefix: " + exp.toPrefix());
-            //System.out.println("Tree grown");
-            System.out.print(exp.treeToIn() + " ");
-            exp.eval();
-            //System.out.println("eval()'ed");
-            System.out.println(exp.root.data.getTruthValues());
+            
+        	System.out.println();
+        	//System.out.println("Evaluating truth table...");
+        	exp.eval();
+        	
+        	System.out.println("Infix expression and truth function:");
+        	System.out.println(exp.treeToIn());
+        	System.out.println("Root: ");
+        	System.out.println(exp.root.data.getSymbol() + " " + exp.root.data.getTruthValues());
+        	
+        	System.out.println();
+        	System.out.println("Truth table:");
+            String[] table = exp.treeToTable();
+            for(int row = 0; row < table.length; row++) {
+            	System.out.println(table[row]);
+            }
             //System.out.println(exp.eval());
             //System.out.println("Result: " + exp.evaluate());
         } catch(NumberFormatException e) {System.out.println(e);}
     }
-    
     private static String prompt() {
         Scanner s = new Scanner(System.in);
         String userIn;
-        System.out.println("Please enter your "
-                + "boolean expression and press enter: ");
         userIn = s.nextLine();
         s.close();
         return userIn;

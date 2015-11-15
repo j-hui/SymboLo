@@ -10,7 +10,6 @@ public interface Symbol {
 	public int getPrecedence();
 	public int compareTo(String s);
 	public int compareTo(Symbol s);
-	
 	final int LEFT = 0;
 	final int RIGHT = 1;
 	
@@ -151,7 +150,7 @@ public interface Symbol {
 			return symbol;
 		}
 		public int getPrecedence() {
-			return 0;
+			return Integer.MAX_VALUE;
 		}
 		public int compareTo(Symbol s) {
 			return compareTo(s.getSymbol());
@@ -271,6 +270,19 @@ public interface Symbol {
 				}
 				return varMap.size();
 			}
+		}
+		
+		public static class NonTruth extends Logic {
+			public NonTruth(String symbol) {
+				this.symbol = symbol;
+			}
+			public int getPrecedence() {
+				return Integer.MAX_VALUE;
+			}
+			public ArrayList<Boolean> eval(ArrayList<Boolean>[] operands) {
+				return null;
+			}
+			
 		}
 	}
 }
